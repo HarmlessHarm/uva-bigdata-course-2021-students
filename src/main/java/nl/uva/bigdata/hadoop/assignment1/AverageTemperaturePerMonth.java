@@ -3,10 +3,7 @@ package nl.uva.bigdata.hadoop.assignment1;
 
 import nl.uva.bigdata.hadoop.HadoopJob;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -19,6 +16,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringTokenizer;
 
 public class AverageTemperaturePerMonth extends HadoopJob {
 
@@ -69,12 +67,16 @@ public class AverageTemperaturePerMonth extends HadoopJob {
 
     @Override
     public void write(DataOutput out) throws IOException {
-      // TODO Implement me
+      out.writeInt(year);
+      out.writeInt(month);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-      // TODO Implement me
+      int y = in.readInt();
+      int m = in.readInt();
+      this.setYear(y);
+      this.setMonth(m);
     }
 
     @Override
@@ -105,8 +107,23 @@ public class AverageTemperaturePerMonth extends HadoopJob {
 
   public static class MeasurementsMapper extends Mapper<Object, Text, YearMonthWritable, IntWritable> {
 
+    private final IntWritable temperature = new IntWritable();
+    private final YearMonthWritable year_month = new YearMonthWritable();
+
     public void map(Object key, Text value, Mapper.Context context) throws IOException, InterruptedException {
-      // TODO Implement me
+
+      String[] input = value.toString().split("\t");
+
+      double quality = Double.parseDouble(input[3]);
+      double minimum = Double.parseDouble(context.getConfiguration().get("__UVA_minimumQuality"));
+
+      if (quality >= minimum) {
+        year_month.setYear(Integer.parseInt(input[0]));
+        year_month.setMonth(Integer.parseInt(input[1]));
+        temperature.set(Integer.parseInt(input[2]));
+
+        context.write(year_month, temperature);
+      }
     }
   }
 
@@ -114,7 +131,19 @@ public class AverageTemperaturePerMonth extends HadoopJob {
 
     public void reduce(YearMonthWritable yearMonth, Iterable<IntWritable> temperatures, Context context)
             throws IOException, InterruptedException {
-      // TODO Implement me
+
+      double sum = 0;
+      int count = 0;
+      for (IntWritable val : temperatures) {
+        sum += val.get();
+        count++;
+      }
+      double avg = sum / count;
+
+      Text output = new Text(yearMonth.getYear()+ "\t"+ yearMonth.getMonth()+"\t"+String.valueOf(avg));
+
+      context.write(output, NullWritable.get());
+
     }
   }
 }
