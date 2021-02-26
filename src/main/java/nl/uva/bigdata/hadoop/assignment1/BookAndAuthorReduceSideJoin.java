@@ -86,7 +86,7 @@ public class BookAndAuthorReduceSideJoin extends HadoopJob {
             throws IOException, InterruptedException {
 
       ArrayList<String> book_info = new ArrayList<String>();
-      String author = "God";
+      String author = "";
 
       for (Text val : values) {
         //
@@ -97,10 +97,11 @@ public class BookAndAuthorReduceSideJoin extends HadoopJob {
           book_info.add(val.toString());
         }
       }
-
-      for (String book : book_info) {
-        Text output = new Text(author + "\t" + book);
-        context.write(output, NullWritable.get());
+      if (!author.equals("")) {
+        for (String book : book_info) {
+          Text output = new Text(author + "\t" + book);
+          context.write(output, NullWritable.get());
+        }
       }
     }
   }
